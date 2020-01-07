@@ -14,9 +14,8 @@ def play_main(filename):
                     channels=wf.getnchannels(),
                     rate=wf.getframerate(),
                     output=True)
-
     data = wf.readframes(CHUNK)
-    while data != '':
+    while len(data) != 0:
         stream.write(data)
         data = wf.readframes(CHUNK)
     stream.stop_stream()

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import datetime
 import json
@@ -21,9 +21,9 @@ if this_month == 1:
 
 target_month = '%4d-%02d' % (last_year,last_month)
 
-print 'target month is ' + target_month
+print('target month is ' + target_month)
 
-print 'DB Checking...'
+print('DB Checking...')
 connector = MySQLdb.connect(host=sql_host, db=sql_db, user=sql_user, passwd=sql_passwd, charset="utf8")
 cursor = connector.cursor()
 
@@ -35,8 +35,8 @@ ranking_res = cursor.fetchall()
 if ranking_res == ():
     # slackに通知
     requests.post(SlackHookURL, data = json.dumps({
-            'text' : u'先月は誰一人とコーヒーを飲んでないみたいです．',
-            'username' : u'SuiCafe',
+            'text' : '先月は誰一人とコーヒーを飲んでないみたいです．',
+            'username' : 'SuiCafe',
             'link_names': 1,
     }))
 
@@ -48,20 +48,20 @@ else:
 
     text = '<!channel> '
 
-    print '{0:d}年{1:d}月のコーヒーランキングです！'.format(last_year, last_month)
+    print('{0:d}年{1:d}月のコーヒーランキングです！'.format(last_year, last_month))
     text += '{0:d}年{1:d}月のコーヒーランキングです！\n'.format(last_year, last_month)
 
     for data in ranking_res:
-        print '{0:<{width}}{1:2d}杯'.format(data[0], data[1], width = max_len+4)
+        print('{0:<{width}}{1:2d}杯'.format(data[0], data[1], width = max_len+4))
         text += '{0:<{width}}{1:2d}杯\n'.format(data[0], data[1], width = max_len+4)
 
-    print '{0:d}月もがんばりましょう\n\n飲んだ人は“杯数x25円“をkyashで投げてください！'.format(this_month)
+    print('{0:d}月もがんばりましょう\n\n飲んだ人は“杯数x25円“をkyashで投げてください！'.format(this_month))
     text += '{0:d}月もがんばりましょう\n\n飲んだ人は“杯数x25円“をkyashで投げてください！'.format(this_month)
 
     # slackに通知
     requests.post(SlackHookURL, data = json.dumps({
             'text' : text,
-            'username' : u'SuiCafe',
+            'username' : 'SuiCafe',
             'link_names': 1,
     }))
 # end if

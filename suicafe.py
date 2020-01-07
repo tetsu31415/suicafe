@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import binascii
 import nfc
@@ -21,9 +21,7 @@ def get_encrypt_data(raw_data, key, iv):
     raw_data_base64 = base64.b64encode(raw_data)
     # 16byte
     if len(raw_data_base64) % 16 != 0:
-        raw_data_base64_16byte = raw_data_base64
-        for i in range(16 - (len(raw_data_base64) % 16)):
-            raw_data_base64_16byte += "_"
+        raw_data_base64_16byte = raw_data_base64 + b'_' * (len(raw_data_base64) % 16)
     else:
         raw_data_base64_16byte = raw_data_base64
 
@@ -49,7 +47,7 @@ target_req_suica = nfc.clf.RemoteTarget("212F")
 target_req_suica.sensf_req = bytearray.fromhex("0000030000")
 ################################################################################
 
-print 'Suica waiting...'
+print('Suica waiting...')
 while True:
     # USBに接続されたNFCリーダに接続してインスタンス化
     clf = nfc.ContactlessFrontend('usb')
@@ -57,7 +55,7 @@ while True:
     # clf.sense( [リモートターゲット], [検索回数], [検索の間隔] )
     target_res = clf.sense(target_req_suica, iterations=int(TIME_cycle//TIME_interval)+1 , interval=TIME_interval)
 
-    if target_res != None:
+    if target_res is not None:
 
         now = datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")
 
@@ -69,10 +67,10 @@ while True:
         #idmをAESで暗号化
         crypto_idm = get_encrypt_data(idm, idm_key, idm_iv)
 
-        print 'Suica detected.'
-        print 'now        = ' + now
-        print 'idm        = ' + idm
-        print 'crypto_idm = ' + crypto_idm
+        print('Suica detected.')
+        print('now        = ' + now)
+        print('idm        = ' + idm.hex())
+        print('crypto_idm = ' + crypto_idm.hex())
 
         connector = MySQLdb.connect(host=sql_host,
                                     db=sql_db,
@@ -82,20 +80,19 @@ while True:
         cursor = connector.cursor()
 
         # タッチユーザが登録されているかDBに問い合わせる
-        usercheck_sql = "SELECT name FROM users WHERE id = '" + crypto_idm + "'"
-        cursor.execute(usercheck_sql)
+        usercheck_sql = "SELECT name FROM users WHERE id = %s"
+        cursor.execute(usercheck_sql, (crypto_idm.hex(),))
         usercheck_res = cursor.fetchall()
 
         if usercheck_res == ():                     # 非登録ユーザーだった時の処理
             usercheck_res = 'UNKNOWN'
-
             # 効果音を鳴らす
             se.play(False)
 
             # slackに通知
             requests.post(SlackHookURL, data = json.dumps({
-                    'text' : u'登録されていないユーザがICカードをタッチしました．\n未登録の場合は管理者までご連絡ください．',
-                    'username' : u'SuiCafe',
+                    'text' : '登録されていないユーザがICカードをタッチしました．\n未登録の場合は管理者までご連絡ください．',
+                    'username' : 'SuiCafe',
                     'link_names': 1,
             }))
 
@@ -105,29 +102,28 @@ while True:
 
             # DBにアップロード
             usercheck_res = (usercheck_res[0])[0]   # UserNameを抜き出す
-            drinklog_sql = u"INSERT INTO drink_log (timestamp, id) VALUES ('" + now + "', '" + crypto_idm + "')"
-            cursor.execute(drinklog_sql)
+            drinklog_sql = "INSERT INTO drink_log (timestamp, id) VALUES (%s, %s)"
+            cursor.execute(drinklog_sql, (now, crypto_idm.hex()))
             connector.commit()
 
             # slackに通知
             requests.post(SlackHookURL, data = json.dumps({
-                    'text' : usercheck_res + u'さんがラボで「コーヒータイム」中です！',
-                    'username' : u'SuiCafe',
+                    'text' : usercheck_res + 'さんがラボで「コーヒータイム」中です！',
+                    'username' : 'SuiCafe',
                     'link_names': 1,
             }))
 
-        print 'User Name  = ' + usercheck_res
+        print('User Name  = ' + usercheck_res)
 
         cursor.close()
         connector.close()
 
-        print 'completed upload!'
-        print 'sleep ' + str(TIME_wait) + ' seconds'
+        print('completed upload!')
+        print('sleep ' + str(TIME_wait) + ' seconds')
         time.sleep(TIME_wait)
-        print 'Suica waiting...'
+        print('Suica waiting...')
 
     #end if
     clf.close()
 #end while
 
-p.terminate()
